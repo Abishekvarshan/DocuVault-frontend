@@ -23,6 +23,8 @@ const P = {
   left: 'M15 6l-6 6 6 6',
   plus: 'M12 5v14M5 12h14',
   refresh: 'M20 11a8 8 0 0 0-14.5-3M4 4v4h4M4 13a8 8 0 0 0 14.5 3M20 20v-4h-4',
+  more: 'M12 5v.01M12 12v.01M12 19v.01',
+  camera: 'M4 7h3l1.5-2h8L18 7h2v12H4zM12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
   logout: 'M9 4H5v16h4M16 8l4 4-4 4M20 12H9',
 };
 export const Icon = ({ name, size = 18 }) => (
@@ -30,7 +32,12 @@ export const Icon = ({ name, size = 18 }) => (
 );
 
 export const formatBytes = (n) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
-export const formatDate = (s) => (s ? new Date(s.replace(' ', 'T') + 'Z').toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+export const formatDate = (s) => {
+  if (!s) return '—';
+  const value = typeof s === 'string' && /^\d{4}-\d\d-\d\d \d\d/.test(s) ? `${s.replace(' ', 'T')}Z` : s;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+};
 
 // ---------- toasts ----------
 const ToastCtx = createContext(() => {});

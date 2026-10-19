@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, fileUrl } from '../api.js';
-import { Empty, ErrorBox, Icon, Spinner, formatBytes, useLoad, usePrefs, useToast } from '../ui.jsx';
+import { Empty, ErrorBox, Icon, Modal, Spinner, formatBytes, useLoad, usePrefs, useToast } from '../ui.jsx';
 import UploadDialog from './UploadDialog.jsx';
 import Viewer from './Viewer.jsx';
 
 const SIZES = { s: 'Small', m: 'Medium', l: 'Large' };
 const FORMATS = { 'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WebP', 'image/gif': 'GIF', 'image/tiff': 'TIFF', 'image/avif': 'AVIF' };
 
-export default function Workspace({ user }) {
+export default function Workspace({ user, uploadRequest = 0 }) {
   const { prefs, setPref } = usePrefs();
   const toast = useToast();
   const tree = useLoad(() => api('/workspace/tree'), []);
@@ -21,6 +21,8 @@ export default function Workspace({ user }) {
   const [openIdx, setOpenIdx] = useState(null);
   const [collapsed, setCollapsed] = useState(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const org = orgs.find((o) => o.id === orgId) || orgs[0];
   const folders = org?.folders || [];
@@ -33,6 +35,11 @@ export default function Workspace({ user }) {
     if (!folders.find((x) => x.id === folderId)) setFolderId((folders.find((x) => x.perms.includes('view')) || folders[0])?.id ?? null);
   }, [tree.data, orgId]);
   useEffect(() => { setPref({ lastOrg: orgId, lastFolder: folderId }); }, [orgId, folderId]);
+  useEffect(() => {
+    if (!uploadRequest) return;
+    if (folder?.perms.includes('upload')) setUploading(true);
+    else toast('Select a folder where you have upload permission.', 'error');
+  }, [uploadRequest]);
   useEffect(() => { const t = setTimeout(() => setF((x) => ({ ...x, q })), 300); return () => clearTimeout(t); }, [q]);
 
   const list = useLoad(() => {
@@ -50,6 +57,17 @@ export default function Workspace({ user }) {
   }, [folders]);
 
   const refresh = () => { tree.reload(); list.reload(); };
+  const deleteImage = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await api(`/workspace/images/${deleteTarget.id}`, { method: 'DELETE' });
+      toast('Image deleted');
+      setDeleteTarget(null);
+      refresh();
+    } catch (e) { toast(e.message, 'error'); }
+    finally { setDeleting(false); }
+  };
   const canUpload = folder?.perms.includes('upload');
   const activeFilters = [f.format, f.from, f.to].filter(Boolean).length;
 
@@ -128,10 +146,21 @@ export default function Workspace({ user }) {
             : (
               <div className={`gallery size-${prefs.previewSize} ${list.loading ? 'dim' : ''}`}>
                 {items.map((im, i) => (
-                  <button key={im.id} className="tile" onClick={() => setOpenIdx(i)}>
-                    <div className="thumb"><img loading="lazy" src={fileUrl(im.id, 'thumb')} alt={im.title || im.documentId} /></div>
-                    <div className="tmeta"><strong>{im.documentId}</strong><span>{im.originalName}</span><span>{formatBytes(im.size)} · {im.width}×{im.height}</span></div>
-                  </button>
+                  <article key={im.id} className="tile">
+                    <button className="tile-open" onClick={() => setOpenIdx(i)} aria-label={`Preview ${im.documentId}`}>
+                      <div className="thumb"><img loading="lazy" src={fileUrl(im.id, 'thumb')} alt={im.title || im.documentId} /></div>
+                      <div className="tmeta"><strong>{im.documentId}</strong><span>{im.originalName}</span><span>{formatBytes(im.size)} · {im.width}×{im.height}</span></div>
+                    </button>
+                    <details className="image-actions">
+                      <summary className="icon-btn" aria-label={`Actions for ${im.documentId}`} title="Image actions"><Icon name="more" /></summary>
+                      <div className="image-action-menu">
+                        {im.perms.includes('download')
+                          ? <a href={fileUrl(im.id, 'original', true)}><Icon name="download" size={15} />Download</a>
+                          : <button disabled title="Requires download permission"><Icon name="download" size={15} />Download</button>}
+                        <button className="danger" disabled={!im.perms.includes('delete')} title={im.perms.includes('delete') ? 'Delete image' : 'Requires delete permission'} onClick={() => setDeleteTarget(im)}><Icon name="trash" size={15} />Delete</button>
+                      </div>
+                    </details>
+                  </article>
                 ))}
               </div>
             )}
@@ -139,6 +168,10 @@ export default function Workspace({ user }) {
       </section>
 
       {uploading && folder && <UploadDialog folder={folder} onClose={() => setUploading(false)} onDone={refresh} />}
+      {deleteTarget && <Modal title="Delete this image?" onClose={() => !deleting && setDeleteTarget(null)} footer={<>
+        <button className="btn" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
+        <button className="btn danger solid" onClick={deleteImage} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete image'}</button>
+      </>}><p><strong>{deleteTarget.documentId}</strong> and its stored versions will be permanently removed.</p></Modal>}
       {openIdx != null && items[openIdx] && (
         <Viewer items={items} index={openIdx} org={org} onIndex={setOpenIdx} onClose={() => setOpenIdx(null)}
           onChanged={(msg) => { msg && toast(msg); refresh(); }} />

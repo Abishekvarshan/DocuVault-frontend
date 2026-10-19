@@ -71,7 +71,9 @@ export default function Viewer({ items, index, org, onIndex, onClose, onChanged 
                 {img.tags.length > 0 && <div className="tags">{img.tags.map((t) => <span key={t} className="tag">{t}</span>)}</div>}</div>
             )}
 
-            <div className="actions">
+            <section className="v-section">
+              <h3 className="v-section-title">Actions</h3>
+              <div className="actions">
               <details className="menu">
                 <summary className={`btn ${has('download') ? '' : 'disabled'}`} onClick={(e) => !has('download') && e.preventDefault()} title={why('download')}><Icon name="download" size={16} />Download</summary>
                 <div className="menu-list">
@@ -84,13 +86,19 @@ export default function Viewer({ items, index, org, onIndex, onClose, onChanged 
               <button className="btn" disabled={!has('download')} title={why('download')} onClick={() => setPicker('copy')}><Icon name="copy" size={16} />Copy</button>
               <button className="btn danger" disabled={!has('delete')} title={why('delete')} onClick={() => setConfirmDel(true)}><Icon name="trash" size={16} />Delete</button>
               <button className="btn" disabled title="Share links are not available yet"><Icon name="share" size={16} />Share link</button>
-            </div>
+              </div>
+            </section>
 
-            <div className="seg full" role="group" aria-label="Preview quality">
-              {['web', 'hd'].map((v) => <button key={v} className={variant === v ? 'active' : ''} onClick={() => setVariant(v)}>{v === 'web' ? 'Web preview' : 'HD preview'}</button>)}
-            </div>
+            <section className="v-section preview-control">
+              <h3 className="v-section-title">Preview quality</h3>
+              <div className="seg full" role="group" aria-label="Preview quality">
+                {['web', 'hd'].map((v) => <button key={v} className={variant === v ? 'active' : ''} onClick={() => setVariant(v)}>{v === 'web' ? 'Web preview' : 'HD preview'}</button>)}
+              </div>
+            </section>
 
-            <dl className="meta">
+            <section className="v-section">
+              <h3 className="v-section-title">File details</h3>
+              <dl className="meta">
               <dt>Folder</dt><dd>{img.folderPath}</dd>
               <dt>File name</dt><dd>{img.originalName}</dd>
               <dt>Format</dt><dd>{img.mime.replace('image/', '').toUpperCase()}</dd>
@@ -100,7 +108,8 @@ export default function Viewer({ items, index, org, onIndex, onClose, onChanged 
               <dt>Uploaded</dt><dd>{formatDate(img.createdAt)}</dd>
               <dt>Last changed</dt><dd>{formatDate(img.updatedAt)}</dd>
               <dt>Your access</dt><dd>{img.perms.join(', ')}</dd>
-            </dl>
+              </dl>
+            </section>
           </>
         )}
       </aside>
